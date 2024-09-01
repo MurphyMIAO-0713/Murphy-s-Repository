@@ -1,0 +1,318 @@
+import tkinter as tk
+import numpy as np
+import random
+import time
+import sounddevice as sd
+import openpyxl
+
+# 单词库
+library_French = {
+    "HF-HI-C": [["祖母", "grandmother", "grand-mère","HF-HI-C"],["应用程序", "app", "application","HF-HI-C"],
+    ["图像", "image", "image","HF-HI-C"], ["公寓", "ﬂat", "plat","HF-HI-C"], ["圆", "circle", "cercle","HF-HI-C"],
+    ["吉他", "guitar", "guitare","HF-HI-C"], ["图像", "image", "image","HF-HI-C"],["照片", "photo", "photo","HF-HI-C"],
+    ["广播", "radio", "radio","HF-HI-C"], ["大学", "college", "collège","HF-HI-C"]], 
+    "HF-HI-NC": [["伞", "umbrella", "parapluie","HF-HI-NC"],["男孩", "boy", "garçon","HF-HI-NC"],["屏幕", "screen", "écran","HF-HI-NC"],["哥哥", "brother", "frère","HF-HI-NC"],
+    ["海滩", "beach", "plage","HF-HI-NC"],["关键", "key", "clé","HF-HI-NC"],["铁路", "railway", "chemin de fer","HF-HI-NC"],
+    ["刀", "knife", "couteau","HF-HI-NC"],["车", "car", "voiture","HF-HI-NC"],["草", "grass", "herbe","HF-HI-NC"]],
+    "HF-LI-C": [["成功", "success", "succès","HF-LI-C"],["小时", "hour", "heure","HF-LI-C"],["北", "north", "nord","HF-LI-C"],
+    ["社会", "society", "société","HF-LI-C"],["代码", "code", "code","HF-LI-C"],["犯罪", "crime", "crime","HF-LI-C"],
+    ["想法", "idea", "idée","HF-LI-C"],    ["环境", "environment", "environnement","HF-LI-C"],    ["事件", "event", "événement","HF-LI-C"],
+    ["讨论", "discussion", "discussion","HF-LI-C"]],
+    "HF-LI-NC": [["培训","training","formation, entraînement","HF-LI-NC"],["讲座","lecture","conférence","HF-LI-NC"],
+    ["晚上","evening","soirée, soir","HF-LI-NC"],["背景","background","arrière-plan","HF-LI-NC"],["梦想","dream","rêve","HF-LI-NC"],["时尚","fashion","mode","HF-LI-NC"],["早晨","morning","matin","HF-LI-NC"],
+    ["目标","target","cible","HF-LI-NC"],["下午","afternoon","après-midi","HF-LI-NC"],["背景","background","arrière-plan","HF-LI-NC"]],
+    "LF-HI-C": [["囚犯","prisoner","prisonnier","LF-HI-C"],["锅","pot","pot","LF-HI-C"],["消费者","consumer","consommateur","LF-HI-C"],["服装","costume","costume","LF-HI-C"],
+    ["法院","court","cour","LF-HI-C"],["代理人","agent","agent","LF-HI-C"],["队长","captain","capitaine","LF-HI-C"],
+    ["公共","public","public","LF-HI-C"],["通道","passage","passage","LF-HI-C"],["钻石","diamond","diamant","LF-HI-C"]],
+    "LF-HI-NC": [["翼","wing","aile","LF-HI-NC"],["燃料","fuel","carburant","LF-HI-NC"],["小屋","cottage","maison de campagne","LF-HI-NC"],
+    ["男性","male","homme","LF-HI-NC"],["脚趾","toe","orteil","LF-HI-NC"],["聚会地点","venue","lieu","LF-HI-NC"],
+    ["眼泪","tear","larme, déchirure","LF-HI-NC"],["胸部","chest","coffre","LF-HI-NC"],["灵魂","soul","âme","LF-HI-NC"],["栅栏","fence","clôture","LF-HI-NC"]],
+    "LF-LI-C": [["元素","element","élément","LF-LI-C"],["事件","incident","incident","LF-LI-C"],
+    ["想象力","imagination","imagination","LF-LI-C"],["场合","occasion","occasion","LF-LI-C"],["权威","authority","autorité","LF-LI-C"],["印象","impression","impression","LF-LI-C"],
+    ["特征","characteristic","caractéristique","LF-LI-C"],["沟通","communication","communication","LF-LI-C"],["野心","ambition","ambition","LF-LI-C"],
+    ["趋势","trend","tendance","LF-LI-C"],["概念","concept","concept","LF-LI-C"]],
+    "LF-LI-NC": [["翻译","translation","traduction","LF-LI-NC"],["噩梦","nightmare","cauchemar","LF-LI-NC"],
+    ["幸福","happiness","bonheur","LF-LI-NC"],["英寸","inch","pouce","LF-LI-NC"],["调查","investigation","enquête","LF-LI-NC"],
+    ["视线","sight","vue","LF-LI-NC"],["听力","hearing","entendre","LF-LI-NC"],["挑战","challenge","défi","LF-LI-NC"],["设置","setting","cadre","LF-LI-NC"],
+    ["要求","requirement","exigence","LF-LI-NC"]]
+}
+
+library_Japanese = {
+    "HF-HI-CC": [["昆虫","insect","虫","HF-HI-CC"],["食物","food","食品","HF-HI-CC"],
+["雪","snow","雪","HF-HI-CC"],["地球","earth","地球","HF-HI-CC"],["云","cloud","雲","HF-HI-CC"],
+["湖","lake","湖","HF-HI-CC"],["商店","shop","店","HF-HI-CC"],["血","blood","血液","HF-HI-CC"],
+["鞋","shoe","靴","HF-HI-CC"],["船","ship","船","HF-HI-CC"]],
+    "HF-HI-EC": [["英雄","hero","ヒーロー","HF-HI-EC"],["办公室","office","オフィス","HF-HI-EC"],
+["柠檬","lemon","レモン","HF-HI-EC"],["蛋糕","cake","ケーキ","HF-HI-EC"],["汽油","petrol","ガソリン","HF-HI-EC"],
+["电视","TV","テレビ","HF-HI-EC"],["酒","wine","ワイン","HF-HI-EC"],["跑步者","runner","ランナー","HF-HI-EC"],
+["衣服","dress","ドレス","HF-HI-EC"],["蛋糕","cake","ケーキ","HF-HI-EC"]],
+    "HF-HI-NC": [["邻居","neighbour","隣人","HF-HI-NC"],["烹饪","cook","料理人","HF-HI-NC"],
+["洞","hole","穴","HF-HI-NC"],["游客","visitor","訪問者","HF-HI-NC"],["树","tree","木","HF-HI-NC"],
+["地球","planet","惑星","HF-HI-NC"],["周一","Monday","月曜日","HF-HI-NC"],["小偷","thief","泥棒","HF-HI-NC"],
+["信","letter","手紙","HF-HI-NC"],["先生","sir","さん","HF-HI-NC"]],
+    "HF-LI-CC": [["距离","distance","距離","HF-LI-CC"],["材料","material","材料","HF-LI-CC"],
+["五月","May","五月","HF-LI-CC"],["知识","knowledge","知識","HF-LI-CC"],["问题","question","質問","HF-LI-CC"],
+["训练","training","訓練","HF-LI-CC"],["冒险","adventure","冒険","HF-LI-CC"],["形式","form","形","HF-LI-CC"],
+["秋天","autumn","秋","HF-LI-CC"],["行动","action","行動","HF-LI-CC"]],
+    "HF-LI-EC": [["画廊","gallery","ギャラリー","HF-LI-EC"],["小说","ﬁction","フィクション","HF-LI-EC"],
+["团队","team","チーム","HF-LI-EC"],["事业","career","キャリア","HF-LI-EC"],["压力","stress","ストレス","HF-LI-EC"],
+["画廊","gallery","ギャラリー","HF-LI-EC"],["周期","cycle","サイクル","HF-LI-EC"],["比赛","race","レース","HF-LI-EC"],
+["画廊","gallery","ギャラリー","HF-LI-EC"],["时尚","fashion","ファッション","HF-LI-EC"]],
+    "HF-LI-NC": [["上下文","context","文脈","HF-LI-NC"],["日期","date","日付","HF-LI-NC"],
+["任务","task","仕事","HF-LI-NC"],["好处","beneﬁt","利点","HF-LI-NC"],["噪音","noise","騒音","HF-LI-NC"],
+["笑话","joke","冗談","HF-LI-NC"],["人群","crowd","人混み","HF-LI-NC"],["烹饪","cooking","料理","HF-LI-NC"],
+["课","lesson","授業","HF-LI-NC"],["安排","arrangement","手配","HF-LI-NC"]],
+    "LF-HI-CC": [["容器","container","容器","LF-HI-CC"],["秘密","secret","秘密","LF-HI-CC"],
+["尾巴","tail","尾","LF-HI-CC"],["喉咙","throat","喉","LF-HI-CC"],["细胞","cell","細胞","LF-HI-CC"],
+["液体","liquid","液体","LF-HI-CC"],["种子","seed","種子","LF-HI-CC"],["研究所","institute","研究所","LF-HI-CC"],
+["雕像","statue","彫像","LF-HI-CC"],["聚会地点","venue","会場","LF-HI-CC"]],
+    "LF-HI-EC": [["专辑","album","アルバム","LF-HI-EC"],["警卫","guard","ガード","LF-HI-EC"],
+["鼓","drum","ドラム","LF-HI-EC"],["队长","captain","キャプテン","LF-HI-EC"],["警卫","guard","ガード","LF-HI-EC"],
+["窗帘","curtain","カーテン","LF-HI-EC"],["钻石","diamond","ダイヤモンド","LF-HI-EC"],["贷款","loan","ローン","LF-HI-EC"],
+["维生素","vitamin","ビタミン","LF-HI-EC"],["领带","tie","ネクタイ","LF-HI-EC"]],
+    "LF-HI-NC": [["故事","tale","おとぎ話","LF-HI-NC"],["火焰","ﬂame","炎","LF-HI-NC"],
+["仆人","servant","使用人","LF-HI-NC"],["天花板","ceiling","天井","LF-HI-NC"],["手术","surgery","手術","LF-HI-NC"],
+["承诺","promise","約束","LF-HI-NC"],["标题","headline","見出し","LF-HI-NC"],["灰尘","dust","ほこり","LF-HI-NC"],
+["支持者","supporter","応援者","LF-HI-NC"],["指甲","nail","爪","LF-HI-NC"]],
+    "LF-LI-CC": [["内容","content","内容","LF-LI-CC"],["幸福","happiness","幸福","LF-LI-CC"],["信仰","belief","信念","LF-LI-CC"],
+["娱乐","entertainment","娯楽","LF-LI-CC"],["版","edition","版","LF-LI-CC"],["分支","branch","支店","LF-LI-CC"],
+["版","edition","版","LF-LI-CC"],["测量","measurement","測定","LF-LI-CC"],["失败","failure","失敗","LF-LI-CC"],
+["感染","infection","感染","LF-LI-CC"]],
+    "LF-LI-EC": [["冲击","shock","ショック","LF-LI-EC"],["类别","category","カテゴリー","LF-LI-EC"],
+["节奏","rhythm","リズム","LF-LI-EC"],["分数","score","スコア","LF-LI-EC"],["品牌","brand","ブランド","LF-LI-EC"],
+["恐怖","horror","ホラー","LF-LI-EC"],["类别","category","カテゴリー","LF-LI-EC"],["方法","approach","アプローチ","LF-LI-EC"],
+["健身","ﬁtness","フィットネス","LF-LI-EC"],["主题","theme","テーマ","LF-LI-EC"]],
+    "LF-LI-NC": [["折扣","discount","割引","LF-LI-NC"],["公告","announcement","発表","LF-LI-NC"],
+["到来","arrival","到着","LF-LI-NC"],["谎言","lie2","嘘","LF-LI-NC",],["线索","clue","手がかり","LF-LI-NC"],
+["债务","debt","借金","LF-LI-NC"],["进口","import","輸入","LF-LI-NC"],["情节","plot","筋書き","LF-LI-NC"],
+["羞愧","shame","恥","LF-LI-NC"],["情节","plot","筋書き","LF-LI-NC"]]
+}
+
+class TestApp(tk.Tk):
+    def __init__(self):
+        super().__init__()
+
+        self.title("测试程序")
+
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        window_width = 800
+        window_height = 600
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+        
+        self.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
+        self.tester_name = ""
+        self.word_library = {}
+        self.test_results = []
+        self.current_index = 0  #当前测试单词索引
+
+        # 创建提示标签       
+        self.hint_label = tk.Label(self, text="请输入测试者信息并选择院系:",font=("宋体", 36))
+        self.hint_label.place(x=400,y=120,anchor="center")
+        # 创建测试者信息输入框
+        self.testname_entry = tk.Entry(self,width=30,font=("宋体", 28))
+        self.testname_entry.place(x=400,y=225,anchor="center")
+        
+        self.French_button = tk.Button(self,text="法语系",command=lambda:self.btnFrenchClick(),font=("宋体", 32))
+        self.French_button.place(x=150,y=300,width=200,height=100)
+        self.Japanese_button = tk.Button(self,text="日语系", command=lambda:self.btnJapaneseClick(),font=("宋体", 32))
+        self.Japanese_button.place(x=450,y=300,width=200,height=100)
+        
+        self.direction_button1 = tk.Button(self, text="", command=lambda: self.btnDirection1Click(),font=("宋体", 28))
+        self.direction_button2 = tk.Button(self, text="", command=lambda: self.btnDirection2Click(),font=("宋体", 28))
+        self.direction_button3 = tk.Button(self, text="", command=lambda: self.btnDirection3Click(),font=("宋体", 28))
+        self.direction_button4 = tk.Button(self, text="", command=lambda: self.btnDirection4Click(),font=("宋体", 28))
+        self.direction_button5 = tk.Button(self, text="", command=lambda: self.btnDirection5Click(),font=("宋体", 28))
+        self.direction_button6 = tk.Button(self, text="", command=lambda: self.btnDirection6Click(),font=("宋体", 28))
+        
+        # 创建单词显示标签
+        self.word_label = tk.Label(self, text="", font=("宋体", 64))
+
+    def btnFrenchClick(self):
+        self.select_language("French")
+    
+    def btnJapaneseClick(self):
+        self.select_language("Japanese")
+    
+    def btnDirection1Click(self):
+        self.select_direction(self.direction_button1.cget("text"))
+    
+    def btnDirection2Click(self):
+        self.select_direction(self.direction_button2.cget("text"))
+    
+    def btnDirection3Click(self):
+        self.select_direction(self.direction_button3.cget("text"))
+
+    def btnDirection4Click(self):
+        self.select_direction(self.direction_button4.cget("text"))
+    
+    def btnDirection5Click(self):
+        self.select_direction(self.direction_button5.cget("text"))
+    
+    def btnDirection6Click(self):
+        self.select_direction(self.direction_button6.cget("text"))
+
+    def select_language(self,language):
+        self.tester_name = self.testname_entry.get()
+        # 隐藏语言选项按钮    
+        self.testname_entry.place_forget()
+        self.French_button.place_forget() 
+        self.Japanese_button.place_forget()
+        
+        if language == "French":
+            self.direction_button1.config(text="中-英")
+            self.direction_button2.config(text="英-中")
+            self.direction_button3.config(text="英-法")
+            self.direction_button4.config(text="法-英")
+            self.direction_button5.config(text="中-法")
+            self.direction_button6.config(text="法-中")
+        elif language == "Japanese":
+            self.direction_button1.config(text="中英")
+            self.direction_button2.config(text="英中")
+            self.direction_button3.config(text="英日")
+            self.direction_button4.config(text="日英")
+            self.direction_button5.config(text="中日")
+            self.direction_button6.config(text="日中")
+            
+        self.direction_button1.place(x=100,y=200,width=150,height=100)
+        self.direction_button2.place(x=100,y=350,width=150,height=100)
+        self.direction_button3.place(x=325,y=200,width=150,height=100)
+        self.direction_button4.place(x=325,y=350,width=150,height=100)
+        self.direction_button5.place(x=550,y=200,width=150,height=100)
+        self.direction_button6.place(x=550,y=350,width=150,height=100)
+
+
+        self.hint_label.config(text="请选择测试方向：",font=("宋体", 32))
+        self.update()
+
+    def select_direction(self,direction):
+        # 根据翻译方向选择单词库，每次都要重新抽取
+        if direction in ["中-英","中-法","英-中","英-法","法-中","法-英"]:
+            drawed_words = self.select_words(library_French)
+        else:
+            drawed_words = self.select_words(library_Japanese)
+
+        self.hint_label.config(text=direction+"测试进行中:",font=("宋体", 16))
+        self.hint_label.place(x=400,y=50,anchor="center")
+        self.direction_button1.place_forget()
+        self.direction_button2.place_forget()
+        self.direction_button3.place_forget()
+        self.direction_button4.place_forget()
+        self.direction_button5.place_forget()
+        self.direction_button6.place_forget()
+        self.word_label.place(x=400,y=280,anchor="center")
+
+        self.current_index = 0
+        self.bind("<space>", lambda event: self.test_word(event, drawed_words, direction))
+
+    def select_words(self,library):
+        # 从每个类别中选择一个单词
+        selected_words = []
+        for words in library.values():
+            selected_words.extend(random.sample(words, 1))
+
+        # 打乱单词顺序
+        random.shuffle(selected_words)
+
+        return selected_words
+          
+    def test_word(self, event, drawed_words, direction):
+        self.word_label.config(text="")
+        self.update()
+        time.sleep(1)
+        current_word = drawed_words[self.current_index]
+        print(current_word)
+        if direction == "中-英" or direction == "中-法":
+            self.word_label.config(text=current_word[0])
+        elif direction == "英-中" or direction == "英-法":
+            self.word_label.config(text=current_word[1])
+        elif direction == "法-中" or direction == "法-英":
+            self.word_label.config(text=current_word[2])
+        elif direction == "中英" or direction == "中日":
+            self.word_label.config(text=current_word[0])
+        elif direction == "英中" or direction == "英日":
+            self.word_label.config(text=current_word[1])
+        elif direction == "日中" or direction == "日英":
+            self.word_label.config(text=current_word[2])
+        self.update()
+        
+        reaction_time = self.detect_voice()
+        self.test_results.append([current_word,direction,reaction_time])
+        self.current_index += 1
+        if self.current_index >= len(drawed_words):
+            self.word_label.config(text='')
+            self.unbind("<space>")
+            self.complete_test(direction)
+
+    def complete_test(self, direction):             
+        print(self.test_results)
+        self.save_results()
+        
+        self.hint_label.config(text=direction+"测试完成！\r\n结果已保存到test_results.xlsx。\r\n请选择一个翻译方向继续测试：",font=("宋体", 24))
+        self.hint_label.place(x=400,y=100,anchor="center")
+        self.direction_button1.place(x=100,y=220,width=150,height=100)
+        self.direction_button2.place(x=100,y=370,width=150,height=100)
+        self.direction_button3.place(x=325,y=220,width=150,height=100)
+        self.direction_button4.place(x=325,y=370,width=150,height=100)
+        self.direction_button5.place(x=550,y=220,width=150,height=100)
+        self.direction_button6.place(x=550,y=370,width=150,height=100)
+
+        
+        self.word_label.place_forget()
+        
+
+    def detect_voice(self):
+        voice_detected = False
+        start_time = time.time()
+        reaction_time = 0 #如果在测试间隔内没有反应，就把反应时间记成0秒
+        def callback(indata, frames, argtime, status):
+            nonlocal voice_detected, start_time, reaction_time
+            if status:
+                print('Error:', status)
+            if np.max(indata > 0.001) & (voice_detected == False):
+                voice_detected = True
+                reaction_time = time.time() - start_time
+
+        stream = sd.InputStream(callback=callback)
+        stream.start()
+        time.sleep(1)
+        stream.stop()
+        stream.close()
+        return reaction_time
+
+    # 保存测试结果到Excel表格
+    def save_results(self):
+        # 创建一个新的工作簿
+        workbook = openpyxl.load_workbook("test_results.xlsx")
+        sheet = workbook.active
+
+        # 写入表头
+        sheet['A1'] = "Tester Name"
+        sheet['B1'] = "中文"
+        sheet['C1'] = "English"
+        sheet['D1'] = "France(Japanse)"
+        sheet['E1'] = "单词类别"
+        sheet['F1'] = "测试方向"
+        sheet['G1'] = "Reaction Time"
+
+        # 写入测试结果
+        # start_row = 2
+        start_row=sheet.max_row+1
+        for result_item in self.test_results:
+            sheet.cell(row=start_row, column=1, value=self.tester_name)
+            sheet.cell(row=start_row, column=2, value=result_item[0][0])
+            sheet.cell(row=start_row, column=3, value=result_item[0][1])
+            sheet.cell(row=start_row, column=4, value=result_item[0][2])
+            sheet.cell(row=start_row, column=5, value=result_item[0][3])
+            sheet.cell(row=start_row, column=6, value=result_item[1])
+            sheet.cell(row=start_row, column=7, value=result_item[2])
+            start_row += 1
+
+        # 保存工作簿
+        workbook.save("test_results.xlsx")
+
+
+app = TestApp()
+app.mainloop()
